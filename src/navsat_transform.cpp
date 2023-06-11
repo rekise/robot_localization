@@ -279,7 +279,7 @@ void NavSatTransform::computeTransform()
     mat.getRPY(imu_roll, imu_pitch, imu_yaw);
     
 
-    RCLCPP_INFO(this->get_logger(),"roll : %f, pitch : %f, yaw : %f", (imu_roll*180.0), (imu_pitch*180.0), (imu_yaw*180.0));
+    // RCLCPP_INFO(this->get_logger(),"roll : %f, pitch : %f, yaw : %f", (imu_roll*180.0), (imu_pitch*180.0), (imu_yaw*180.0));
 
 
     /* The IMU's heading was likely originally reported w.r.t. magnetic north.
@@ -684,6 +684,15 @@ void NavSatTransform::imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   RCLCPP_INFO(this->get_logger(), "%s", __func__);
 
+  double roll_r = 0;
+  double pitch_r = 0;
+  double yaw_r = 0;
+  
+  tf2::Quaternion quat_r(msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w);
+  ros_filter_utilities::quatToRPY(quat_r, roll_r, pitch_r, yaw_r);
+  RCLCPP_INFO(this->get_logger(),"imucb raw: roll : %f, pitch : %f, yaw : %f", (roll_r), (pitch_r), (yaw_r));
+
+
   // We need the baseLinkFrameId_ from the odometry message, so
   // we need to wait until we receive it.
   if (has_transform_odom_) {
@@ -711,6 +720,8 @@ void NavSatTransform::imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
         roll_offset, pitch_offset, yaw_offset);
       ros_filter_utilities::quatToRPY(transform_orientation_, roll, pitch, yaw);
 
+      RCLCPP_INFO(this->get_logger(),"imucb: roll : %f, pitch : %f, yaw : %f", (roll), (pitch), (yaw));
+
       // Apply the offset (making sure to bound them), and throw them in a
       // vector
       tf2::Vector3 rpy_angles(
@@ -727,6 +738,8 @@ void NavSatTransform::imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
       transform_orientation_.setRPY(
         rpy_angles.getX(), rpy_angles.getY(),
         rpy_angles.getZ());
+
+      RCLCPP_INFO(this->get_logger(),"imucbcr: roll : %f, pitch : %f, yaw : %f", (rpy_angles.getX()), (rpy_angles.getY()), (rpy_angles.getZ()));
 
       has_transform_imu_ = true;
     }
