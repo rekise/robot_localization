@@ -70,17 +70,30 @@ public:
 
 private:
   /**
-   * @brief Callback for computing and publish transform
+   * @brief Callback for computing and publish transform on odometry/gps
    */
   void transformCallback();
 
   /**
    * @brief Computes the transform from the Cartesian frame to the odom frame
+   *    transform_cartesian_pose_corrected (datum)
+   * if manual datum set 
+   *    use transform_cartesian_pose_corrected as that only i.e, transform_cartesian_pose_
+   * else
+   *    get the gps data, transform and get the base_links data in transform_cartesian_pose_corrected
+   * 
+   * get current rpy from transform_orientation_ (imu data)
+   * on yaw apply offset, declination calculation, <--- used for orientation
+   * does the logic !!!
+   * 
+   * Stores the rot in cartesian_world_transform_
    */
   void computeTransform();
 
   /**
    * @brief Callback for the datum service
+   * sets transform_good_ to false
+   *    sets datum using setTransformGps and 
    */
   bool datumCallback(
     const std::shared_ptr<robot_localization::srv::SetDatum::Request>
@@ -121,18 +134,32 @@ private:
 
   /**
    * @brief Callback for the GPS fix data
+   * sets gps_frame_id_
+   *    now if transform_good_ is still false && !use_manual_datum_
+   *        setTransformGps
+   *    store gps data in latest_cartesian_pose_ (x, y, z)
    * @param[in] msg The NavSatFix message to process
    */
   void gpsFixCallback(const sensor_msgs::msg::NavSatFix::SharedPtr msg);
 
   /**
    * @brief Callback for the IMU data
+   * only if has_transform_odom_ is true
+   *    store orientation in transform_orientation_, get rpy
+   *    get the data in base_link frame, calculate offsets for rpy
+   *    subtract the offsets, update 
+   *    transform_orientation_
+   * sets has_transform_imu_ to true
    * @param[in] msg The IMU message to process
    */
   void imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg);
 
   /**
    * @brief Callback for the odom data
+   * sets world_frame_id_ to the input frame (mostly odom)
+   * sets base_link_frame_id_
+   *    if manual datum not asked to set and !transform_good
+   *        set transformodometry using given data
    * @param[in] msg The odometry message to process
    */
   void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg);
@@ -145,13 +172,19 @@ private:
 
   /**
    * @brief Prepares the GPS odometry message before sending
+   * convert latest latest_cartesian_pose_ to map -> transformed_cartesian_gps
+   * convert transformed_cartesian_gps in to transform (tf) --- gps location
+   * convert transformed_cartesian_gps to get robot's location transformed_cartesian_robot
+   * update gps_odom using transformed_cartesian_robot
    * @param[out] gps_odom The odometry message to prepare
    */
   bool prepareGpsOdometry(nav_msgs::msg::Odometry * gps_odom);
 
   /**
    * @brief Used for setting the GPS data that will be used to compute the
-   * transform
+   * transform,
+   * sets transform_cartesian_pose_ and has_transform_gps_ to true, it's main
+   * aim is to set the datum coordinate system (x,y,z and Identity w.r.t UTM)
    * @param[in] msg The NavSatFix message to use in the transform
    */
   void setTransformGps(const sensor_msgs::msg::NavSatFix::SharedPtr & msg);
@@ -159,6 +192,10 @@ private:
   /**
    * @brief Used for setting the odometry data that will be used to compute the
    * transform
+   * sets has_transform_odom_ to true
+   * store the transform from input in transform_world_pose_
+   * //if !transform_good_ && use_odometry_yaw_ && !use_manual_datum_
+   * //   update transform_orientation_ using imu callback
    * @param[in] msg The odometry message to use in the transform
    */
   void setTransformOdometry(const nav_msgs::msg::Odometry::SharedPtr & msg);
@@ -166,6 +203,7 @@ private:
   /**
    * @brief Transforms the passed in pose from Cartesian to map frame
    *  @param[in] cartesian_pose the pose in Cartesian frame to use to transform
+   * does the calculation <--
    */
   nav_msgs::msg::Odometry cartesianToMap(const tf2::Transform & cartesian_pose) const;
 
