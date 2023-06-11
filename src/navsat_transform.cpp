@@ -310,8 +310,8 @@ void NavSatTransform::computeTransform()
       this->get_logger(),
       "Corrected for magnetic declination of %g, "
       "user-specified offset of %g and meridian convergence of %g. "
-      "Transform heading factor is now %g, %g deg",
-      magnetic_declination_, yaw_offset_, utm_meridian_convergence_, imu_yaw, imu_yaw * 180.0);
+      "Transform heading factor is now %g",
+      magnetic_declination_, yaw_offset_, utm_meridian_convergence_, imu_yaw);
 
     // Convert to tf-friendly structures
     tf2::Quaternion imu_quat;
